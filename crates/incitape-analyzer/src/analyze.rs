@@ -1,4 +1,6 @@
-use crate::model::{AnalysisOutput, EntityRef, EvidenceRef, RankingEntry};
+use crate::model::{
+    AnalysisOutput, AnalysisWindow, EntityRef, EvidenceRef, RankingEntry, RankingFeatures,
+};
 use incitape_core::json::{
     determinism_hash_for_json_value, determinism_hash_hex, to_canonical_json_bytes,
 };
@@ -144,11 +146,15 @@ fn analyze_records(
     let mut stats = BTreeMap::<ServiceKey, ServiceStats>::new();
     let mut edges = BTreeMap::<ServiceKey, BTreeSet<ServiceKey>>::new();
     let mut incoming = BTreeMap::<ServiceKey, BTreeSet<ServiceKey>>::new();
+    let mut window_start = u64::MAX;
+    let mut window_end = 0u64;
 
     for record in records {
         if record.record_type != RecordType::Traces {
             continue;
         }
+        window_start = window_start.min(record.capture_time_unix_nano);
+        window_end = window_end.max(record.capture_time_unix_nano);
         let request = ExportTraceServiceRequest::decode(record.otlp_payload_bytes.as_slice())
             .map_err(|e| AppError::validation(format!("trace decode error: {e}")))?;
         process_trace_request(
@@ -160,12 +166,30 @@ fn analyze_records(
         )?;
     }
 
-    let ranking = build_ranking(stats, edges, incoming, config)?;
+    let window = if window_start == u64::MAX {
+        AnalysisWindow {
+            t0_unix_nano: 0,
+            duration_ms: 0,
+        }
+    } else {
+        let duration = if window_end > window_start {
+            (window_end - window_start) / 1_000_000
+        } else {
+            0
+        };
+        AnalysisWindow {
+            t0_unix_nano: window_start,
+            duration_ms: duration,
+        }
+    };
+
+    let ranking = build_ranking(stats, edges, incoming, config, window.t0_unix_nano)?;
     let config_hash = config.config_hash()?;
 
     let mut output = AnalysisOutput {
         tape_id: tape_id.to_string(),
         ranking,
+        window,
         determinism_hash: String::new(),
         config_hash,
     };
@@ -295,22 +319,27 @@ fn build_ranking(
     edges: BTreeMap<ServiceKey, BTreeSet<ServiceKey>>,
     incoming: BTreeMap<ServiceKey, BTreeSet<ServiceKey>>,
     config: &AnalyzerConfig,
+    window_start_unix_nano: u64,
 ) -> AppResult<Vec<RankingEntry>> {
     if stats.is_empty() {
         return Ok(Vec::new());
     }
 
     let mut latency_medians: Vec<u64> = Vec::new();
+    let mut latency_p95s: Vec<u64> = Vec::new();
     let mut latency_mads: Vec<u64> = Vec::new();
+    let mut error_rates: Vec<u64> = Vec::new();
     let mut throughput_rates: Vec<u64> = Vec::new();
     let mut earliest_bins: Vec<u64> = Vec::new();
     let mut metrics = BTreeMap::<ServiceKey, ServiceMetrics>::new();
 
     for (service, stat) in &stats {
         let median_latency = percentile(&stat.durations, 50);
+        let p95_latency = percentile(&stat.durations, 95);
         let mad_latency = median_absolute_deviation(&stat.durations, median_latency);
         let window_micros = time_window_micros(stat);
         let throughput_rate = throughput_rate(stat.span_count, window_micros);
+        let error_rate = ratio_micros(stat.error_count, stat.span_count);
         let earliest_capture_bin = if stat.earliest_capture_bin == u64::MAX {
             0
         } else {
@@ -318,7 +347,9 @@ fn build_ranking(
         };
 
         latency_medians.push(median_latency);
+        latency_p95s.push(p95_latency);
         latency_mads.push(mad_latency);
+        error_rates.push(error_rate);
         throughput_rates.push(throughput_rate);
         earliest_bins.push(earliest_capture_bin);
 
@@ -328,6 +359,7 @@ fn build_ranking(
             service.clone(),
             ServiceMetrics {
                 median_latency,
+                p95_latency,
                 throughput_rate,
                 earliest_capture_bin,
                 downstream_error_count: stat.downstream_error_count,
@@ -337,7 +369,9 @@ fn build_ranking(
     }
 
     let latency_baseline = median(&mut latency_medians);
+    let p95_baseline = median(&mut latency_p95s);
     let mad_baseline = median(&mut latency_mads);
+    let error_rate_baseline = median(&mut error_rates);
     let throughput_baseline = median(&mut throughput_rates);
     let earliest_min = earliest_bins.iter().min().copied().unwrap_or(0);
     let earliest_max = earliest_bins.iter().max().copied().unwrap_or(0);
@@ -424,6 +458,25 @@ fn build_ranking(
             1_000_000,
         );
 
+        let error_rate_delta_ppm = error_rate as i64 - error_rate_baseline as i64;
+        let latency_p95_delta_us = service_metrics.p95_latency as i64 - p95_baseline as i64;
+        let throughput_delta_ppm = if throughput_baseline > 0 {
+            let diff = service_metrics.throughput_rate as i128 - throughput_baseline as i128;
+            let ppm = diff.saturating_mul(1_000_000) / throughput_baseline as i128;
+            ppm.clamp(i64::MIN as i128, i64::MAX as i128) as i64
+        } else {
+            0
+        };
+        let first_anom_offset_ms = service_metrics
+            .exemplar
+            .map(|exemplar| {
+                let delta = exemplar
+                    .end_time_unix_nano
+                    .saturating_sub(window_start_unix_nano);
+                (delta / 1_000_000) as i64
+            })
+            .unwrap_or(0);
+
         let entity = EntityRef {
             kind: "service".to_string(),
             name: service.name.clone(),
@@ -446,6 +499,12 @@ fn build_ranking(
             downstream_impact: downstream as i64,
             centrality: centrality as i64,
             evidence_refs,
+            features: RankingFeatures {
+                error_rate_delta_ppm,
+                latency_p95_delta_us,
+                throughput_delta_ppm,
+                first_anom_offset_ms,
+            },
         });
     }
 
@@ -636,6 +695,7 @@ struct SpanCandidate {
 #[derive(Debug, Clone)]
 struct ServiceMetrics {
     median_latency: u64,
+    p95_latency: u64,
     throughput_rate: u64,
     earliest_capture_bin: u64,
     downstream_error_count: u64,
