@@ -1,0 +1,25 @@
+tape_version: 1
+tape_id: 61860dd1467390d052c280e17b0bffbecb7e69457422144b415f9508a97a9ad7
+capture:
+  started_at_rfc3339: 2025-01-01T00:00:00Z
+  ended_at_rfc3339: 2025-01-01T00:00:01Z
+  source: eval_generator
+redaction:
+  profile: safe_default
+  ruleset_sha256: adde98c3ae8963afef35787d25aba07f12343f3bd08eebc5b23db6d27dc63bdd
+  applied: true
+ground_truth:
+  root_cause:
+    kind: service
+    name: svc-4
+    namespace: ''
+  faults:
+  - at_capture_time_unix_nano: 1700000000000000000
+    kind: latency_injection
+    target:
+      kind: service
+      name: svc-4
+      namespace: ''
+    params:
+      added_latency_ms: 150
+derived_from: null

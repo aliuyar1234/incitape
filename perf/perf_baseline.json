@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/fixtures/perf_medium",
+  "runs": 5,
+  "median_ms": 1000,
+  "p95_ms": 2000,
+  "tolerance_ratio": 5.0
+}
+

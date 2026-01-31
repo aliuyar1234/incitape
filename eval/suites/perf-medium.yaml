@@ -1,0 +1,19 @@
+version: 1
+name: "perf-medium"
+tapes_dir: "eval/fixtures/perf_medium"
+thresholds:
+  top1_micros: 0
+  top3_micros: 0
+  mrr_micros: 0
+scenarios:
+  - id: "tape"
+    seed: 123
+    services: 8
+    fanout: 2
+    traces: 200
+    fault:
+      kind: "latency"
+      target_index: 4
+      added_latency_ms: 150
+      rate_percent: 100
+
