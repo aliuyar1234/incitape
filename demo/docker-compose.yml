@@ -1,0 +1,66 @@
+services:
+  collector:
+    image: otel/opentelemetry-collector:0.91.0
+    command: ["--config=/etc/otel/collector.yaml"]
+    environment:
+      - INCITAPE_AUTH_TOKEN
+    volumes:
+      - ./collector/collector.yaml:/etc/otel/collector.yaml:ro
+      - ./out/tls.crt:/etc/otel/tls.crt:ro
+    depends_on:
+      - incitape
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    ports:
+      - "16686:16686"
+
+  incitape:
+    build:
+      context: ..
+      dockerfile: demo/recorder/Dockerfile
+    command: ["--config", "/etc/incitape/config.yaml", "record", "--out", "/out/tape", "--duration", "20"]
+    volumes:
+      - ./out:/out
+      - ./recorder/incitape.yaml:/etc/incitape/config.yaml:ro
+      - ./out/tls.crt:/etc/incitape/tls.crt:ro
+      - ./out/tls.key:/etc/incitape/tls.key:ro
+      - ./out/auth.token:/etc/incitape/auth.token:ro
+
+  frontend:
+    build: ./services/frontend
+    environment:
+      - SERVICE_NAME=frontend
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+    depends_on:
+      - collector
+    ports:
+      - "8080:8080"
+
+  checkout:
+    build: ./services/checkout
+    environment:
+      - SERVICE_NAME=checkout
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+    depends_on:
+      - collector
+
+  payments:
+    build: ./services/payments
+    environment:
+      - SERVICE_NAME=payments
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+    depends_on:
+      - collector
+
+  loadgen:
+    image: curlimages/curl:8.6.0
+    entrypoint: ["/bin/sh", "-c"]
+    command: "i=0; while [ $$i -lt 50 ]; do curl -s http://frontend:8080/ > /dev/null; i=$$((i+1)); sleep 0.1; done"
+    depends_on:
+      - frontend
+

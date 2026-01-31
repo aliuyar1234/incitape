@@ -1,0 +1,11 @@
+recorder:
+  grpc_bind: "0.0.0.0:4317"
+  http_bind: "0.0.0.0:4318"
+  tls:
+    enabled: true
+    cert_path: /etc/incitape/tls.crt
+    key_path: /etc/incitape/tls.key
+  auth:
+    enabled: true
+    token_path: /etc/incitape/auth.token
+

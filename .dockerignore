@@ -1,0 +1,16 @@
+# Build artifacts
+/target
+**/target
+
+# Local outputs
+/eval_out
+/demo/out
+/perf/*.json
+
+# VCS and editor
+/.git
+/.gitignore
+/.idea
+/.vscode
+*.swp
+*.tmp

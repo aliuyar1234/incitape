@@ -1,0 +1,24 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp/incitape:
+    endpoint: incitape:4317
+    tls:
+      ca_file: /etc/otel/tls.crt
+    headers:
+      authorization: "Bearer ${INCITAPE_AUTH_TOKEN}"
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlp/incitape, otlp/jaeger]
+
