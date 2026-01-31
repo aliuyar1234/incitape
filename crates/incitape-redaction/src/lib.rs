@@ -6,5 +6,6 @@ pub use otlp::{
     scan_metrics_request, scan_trace_request,
 };
 pub use redaction::{
-    EntropyConfig, LeakageScanner, RedactionEngine, RedactionRule, RedactionRuleset,
+    scan_json_value, EntropyConfig, LeakageScanner, RedactionEngine, RedactionRule,
+    RedactionRuleset,
 };

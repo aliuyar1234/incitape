@@ -7,8 +7,14 @@ license.workspace = true
 [dependencies]
 incitape-core = { path = "../incitape-core" }
 incitape-analyzer = { path = "../incitape-analyzer" }
+incitape-redaction = { path = "../incitape-redaction" }
+incitape-tape = { path = "../incitape-tape" }
+hex = "0.4"
 jsonschema = "0.17"
+opentelemetry-proto = { version = "0.31", default-features = false, features = ["trace", "gen-tonic"] }
+prost = "0.14"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 ureq = { version = "2", features = ["json"] }

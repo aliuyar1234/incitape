@@ -89,7 +89,12 @@ fn allowlist() -> BTreeMap<&'static str, BTreeSet<&'static str>> {
     );
     map.insert(
         "incitape-report",
-        set(["incitape-core", "incitape-tape", "incitape-analyzer"]),
+        set([
+            "incitape-core",
+            "incitape-tape",
+            "incitape-analyzer",
+            "incitape-redaction",
+        ]),
     );
     map.insert(
         "incitape-cli",

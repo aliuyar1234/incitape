@@ -1,28 +1,298 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["summary", "suspects", "checks"],
   "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tape_id",
+    "analysis_ref",
+    "executive_summary",
+    "root_cause",
+    "timeline",
+    "impact",
+    "mitigation",
+    "unknowns",
+    "confidence",
+    "citations"
+  ],
   "properties": {
-    "summary": { "type": "string", "maxLength": 2000 },
-    "suspects": {
-      "type": "array",
-      "maxItems": 5,
-      "items": {
-        "type": "object",
-        "required": ["name", "namespace", "reason"],
-        "additionalProperties": false,
-        "properties": {
-          "name": { "type": "string", "maxLength": 256 },
-          "namespace": { "type": "string", "maxLength": 256 },
-          "reason": { "type": "string", "maxLength": 2000 }
+    "schema_version": { "type": "string", "const": "ai_report_v1" },
+    "tape_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "analysis_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analysis_sha256", "top_k"],
+      "properties": {
+        "analysis_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "top_k": { "type": "integer", "minimum": 1, "maximum": 5 }
+      }
+    },
+    "executive_summary": { "type": "string", "minLength": 1, "maxLength": 600 },
+    "root_cause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary_suspect_id", "why", "score_summary"],
+      "properties": {
+        "primary_suspect_id": {
+          "type": "string",
+          "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "why": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "score_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total_score_ppm", "breakdown_ppm"],
+          "properties": {
+            "total_score_ppm": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "breakdown_ppm": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "self_signal",
+                "temporal_precedence",
+                "downstream_impact",
+                "centrality"
+              ],
+              "properties": {
+                "self_signal": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "temporal_precedence": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "downstream_impact": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "centrality": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000
+                }
+              }
+            }
+          }
+        },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["suspect_id", "why", "what_would_change_mind"],
+            "properties": {
+              "suspect_id": {
+                "type": "string",
+                "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+              },
+              "why": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "what_would_change_mind": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              }
+            }
+          }
         }
       }
     },
-    "checks": {
+    "timeline": {
       "type": "array",
-      "maxItems": 10,
-      "items": { "type": "string", "maxLength": 500 }
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "t_start_ms",
+          "t_end_ms",
+          "severity",
+          "summary",
+          "suspect_ids",
+          "evidence_ids"
+        ],
+        "properties": {
+          "t_start_ms": { "type": "integer", "minimum": 0 },
+          "t_end_ms": { "type": "integer", "minimum": 0 },
+          "severity": {
+            "type": "string",
+            "enum": ["info", "warn", "critical"]
+          },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "suspect_ids": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "string",
+              "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+            }
+          },
+          "evidence_ids": {
+            "type": "array",
+            "maxItems": 5,
+            "items": { "type": "string", "pattern": "^EVID-[0-9]{4}$" }
+          }
+        }
+      }
+    },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_symptoms",
+        "services_affected",
+        "duration_ms_estimate",
+        "slo_risk"
+      ],
+      "properties": {
+        "user_symptoms": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "minLength": 1, "maxLength": 96 }
+        },
+        "services_affected": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        },
+        "duration_ms_estimate": { "type": "integer", "minimum": 0 },
+        "slo_risk": {
+          "type": "string",
+          "enum": ["unknown", "low", "medium", "high"]
+        }
+      }
+    },
+    "mitigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["immediate_checks", "long_term_fixes"],
+      "properties": {
+        "immediate_checks": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "title",
+              "details",
+              "linked_suspect_ids",
+              "linked_evidence_ids"
+            ],
+            "properties": {
+              "title": { "type": "string", "minLength": 1, "maxLength": 96 },
+              "details": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "linked_suspect_ids": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+                }
+              },
+              "linked_evidence_ids": {
+                "type": "array",
+                "maxItems": 5,
+                "items": { "type": "string", "pattern": "^EVID-[0-9]{4}$" }
+              }
+            }
+          }
+        },
+        "long_term_fixes": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "title",
+              "details",
+              "linked_suspect_ids",
+              "linked_evidence_ids"
+            ],
+            "properties": {
+              "title": { "type": "string", "minLength": 1, "maxLength": 96 },
+              "details": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "linked_suspect_ids": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+                }
+              },
+              "linked_evidence_ids": {
+                "type": "array",
+                "maxItems": 5,
+                "items": { "type": "string", "pattern": "^EVID-[0-9]{4}$" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "why_it_matters", "data_needed"],
+        "properties": {
+          "question": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "why_it_matters": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "data_needed": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall", "level", "reasoning"],
+      "properties": {
+        "overall": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "level": { "type": "string", "enum": ["low", "medium", "high"] },
+        "reasoning": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      }
+    },
+    "citations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used_suspect_ids", "used_evidence_ids"],
+      "properties": {
+        "used_suspect_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^svc:[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        },
+        "used_evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^EVID-[0-9]{4}$" }
+        }
+      }
     }
   }
 }

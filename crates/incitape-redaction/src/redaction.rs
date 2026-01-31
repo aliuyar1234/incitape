@@ -1,6 +1,8 @@
 use incitape_core::{AppError, AppResult};
 use regex::Regex;
+use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct RedactionRule {
@@ -153,6 +155,35 @@ impl LeakageScanner {
             Ok(text) => self.scan_str(text),
             Err(_) => 1,
         }
+    }
+}
+
+pub fn scan_json_value(value: &Value, scanner: &LeakageScanner, skip_keys: &[&str]) -> u64 {
+    let mut skip = HashSet::new();
+    for key in skip_keys {
+        skip.insert(*key);
+    }
+    scan_json_value_inner(value, scanner, &skip)
+}
+
+fn scan_json_value_inner(value: &Value, scanner: &LeakageScanner, skip: &HashSet<&str>) -> u64 {
+    match value {
+        Value::String(s) => scanner.scan_str(s),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| scan_json_value_inner(item, scanner, skip))
+            .sum(),
+        Value::Object(map) => map
+            .iter()
+            .map(|(key, value)| {
+                if skip.contains(key.as_str()) {
+                    0
+                } else {
+                    scan_json_value_inner(value, scanner, skip)
+                }
+            })
+            .sum(),
+        _ => 0,
     }
 }
 

@@ -1047,6 +1047,7 @@ dependencies = [
  "opentelemetry-proto",
  "prost",
  "regex",
+ "serde_json",
  "sha2",
 ]
 
@@ -1068,12 +1069,18 @@ dependencies = [
 name = "incitape-report"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "incitape-analyzer",
  "incitape-core",
+ "incitape-redaction",
+ "incitape-tape",
  "jsonschema",
+ "opentelemetry-proto",
+ "prost",
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "ureq",
 ]
 
