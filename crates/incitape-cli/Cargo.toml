@@ -1,0 +1,29 @@
+[package]
+name = "incitape-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "incitape"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+incitape-core = { path = "../incitape-core" }
+incitape-analyzer = { path = "../incitape-analyzer" }
+incitape-eval = { path = "../incitape-eval" }
+incitape-minimize = { path = "../incitape-minimize" }
+incitape-report = { path = "../incitape-report" }
+incitape-redaction = { path = "../incitape-redaction" }
+incitape-recorder = { path = "../incitape-recorder" }
+incitape-replay = { path = "../incitape-replay" }
+incitape-tape = { path = "../incitape-tape" }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+opentelemetry-proto = { version = "0.31", default-features = false, features = ["trace", "gen-tonic"] }
+prost = "0.14"
+tempfile = "3"

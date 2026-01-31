@@ -1,0 +1,17 @@
+[package]
+name = "incitape-replay"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+incitape-core = { path = "../incitape-core" }
+incitape-tape = { path = "../incitape-tape" }
+hex = "0.4"
+opentelemetry-proto = { version = "0.31", default-features = false, features = ["trace", "metrics", "logs", "gen-tonic"] }
+prost = "0.14"
+tokio = { version = "1", features = ["time"] }
+tonic = { version = "0.14", features = ["tls-ring"] }
+
+[dev-dependencies]
+tempfile = "3"

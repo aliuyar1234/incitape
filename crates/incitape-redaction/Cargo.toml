@@ -1,0 +1,13 @@
+[package]
+name = "incitape-redaction"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hex = "0.4"
+incitape-core = { path = "../incitape-core" }
+opentelemetry-proto = { version = "0.31", default-features = false, features = ["trace", "metrics", "logs", "gen-tonic"] }
+prost = "0.14"
+regex = "1"
+sha2 = "0.10"

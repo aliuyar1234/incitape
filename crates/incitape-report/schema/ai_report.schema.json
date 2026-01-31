@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["summary", "suspects", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "summary": { "type": "string", "maxLength": 2000 },
+    "suspects": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "namespace", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "maxLength": 256 },
+          "namespace": { "type": "string", "maxLength": 256 },
+          "reason": { "type": "string", "maxLength": 2000 }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "maxItems": 10,
+      "items": { "type": "string", "maxLength": 500 }
+    }
+  }
+}

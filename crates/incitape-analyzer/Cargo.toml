@@ -1,0 +1,17 @@
+[package]
+name = "incitape-analyzer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hex = "0.4"
+incitape-core = { path = "../incitape-core" }
+incitape-tape = { path = "../incitape-tape" }
+opentelemetry-proto = { version = "0.31", default-features = false, features = ["trace", "gen-tonic"] }
+prost = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

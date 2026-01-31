@@ -1,0 +1,8 @@
+/target/
+**/target/
+/eval_out/
+/demo/out/
+/perf/perf_last_run.json
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/incitape-core",
+  "crates/incitape-tape",
+  "crates/incitape-redaction",
+  "crates/incitape-recorder",
+  "crates/incitape-replay",
+  "crates/incitape-analyzer",
+  "crates/incitape-minimize",
+  "crates/incitape-eval",
+  "crates/incitape-report",
+  "crates/incitape-cli",
+  "tools/boundary-check",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
