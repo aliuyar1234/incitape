@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Cargo fmt
+        run: cargo fmt --check
+        working-directory: incitape
+      - name: Cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: incitape
+      - name: Cargo test
+        run: cargo test --locked
+        working-directory: incitape
+      - name: Boundary check
+        run: cargo run -p boundary-check
+        working-directory: incitape
+      - name: Eval synthetic smoke
+        run: |
+          cargo run -p incitape-cli -- eval generate --suite eval/suites/synthetic-smoke.yaml --out eval_out/smoke --overwrite
+          cargo run -p incitape-cli -- eval run --suite eval/suites/synthetic-smoke.yaml --out eval_out/eval.json --overwrite
+        working-directory: incitape
+      - name: Eval secret injection
+        run: |
+          cargo run -p incitape-cli -- eval generate --suite eval/suites/secret-injection.yaml --out eval_out/secret --overwrite
+          cargo run -p incitape-cli -- eval run --suite eval/suites/secret-injection.yaml --out eval_out/secret_eval.json --overwrite
+        working-directory: incitape
+      - name: Validate strict fixture
+        run: cargo run -p incitape-cli -- validate eval_out/smoke/error-chain --strict
+        working-directory: incitape
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - name: Cargo audit
+        run: cargo audit
+        working-directory: incitape
+      - name: Cargo deny licenses
+        run: cargo deny check licenses
+        working-directory: incitape
