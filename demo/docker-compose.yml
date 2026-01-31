@@ -2,8 +2,8 @@ services:
   collector:
     image: otel/opentelemetry-collector:0.91.0
     command: ["--config=/etc/otel/collector.yaml"]
-    environment:
-      - INCITAPE_AUTH_TOKEN
+    env_file:
+      - ./out/collector.env
     volumes:
       - ./collector/collector.yaml:/etc/otel/collector.yaml:ro
       - ./out/tls.crt:/etc/otel/tls.crt:ro
@@ -20,7 +20,7 @@ services:
     build:
       context: ..
       dockerfile: demo/recorder/Dockerfile
-    command: ["--config", "/etc/incitape/config.yaml", "record", "--out", "/out/tape", "--duration", "20"]
+    command: ["--config", "/etc/incitape/config.yaml", "record", "--out", "/out/tape"]
     volumes:
       - ./out:/out
       - ./recorder/incitape.yaml:/etc/incitape/config.yaml:ro
@@ -32,8 +32,14 @@ services:
     build: ./services/frontend
     environment:
       - SERVICE_NAME=frontend
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=collector:4317
       - OTEL_EXPORTER_OTLP_INSECURE=true
+      - INCITAPE_OTLP_ENDPOINT=https://incitape:4318/v1/traces
+      - INCITAPE_CA_FILE=/etc/incitape/tls.crt
+    env_file:
+      - ./out/collector.env
+    volumes:
+      - ./out/tls.crt:/etc/incitape/tls.crt:ro
     depends_on:
       - collector
     ports:
@@ -43,8 +49,14 @@ services:
     build: ./services/checkout
     environment:
       - SERVICE_NAME=checkout
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=collector:4317
       - OTEL_EXPORTER_OTLP_INSECURE=true
+      - INCITAPE_OTLP_ENDPOINT=https://incitape:4318/v1/traces
+      - INCITAPE_CA_FILE=/etc/incitape/tls.crt
+    env_file:
+      - ./out/collector.env
+    volumes:
+      - ./out/tls.crt:/etc/incitape/tls.crt:ro
     depends_on:
       - collector
 
@@ -52,8 +64,14 @@ services:
     build: ./services/payments
     environment:
       - SERVICE_NAME=payments
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=collector:4317
       - OTEL_EXPORTER_OTLP_INSECURE=true
+      - INCITAPE_OTLP_ENDPOINT=https://incitape:4318/v1/traces
+      - INCITAPE_CA_FILE=/etc/incitape/tls.crt
+    env_file:
+      - ./out/collector.env
+    volumes:
+      - ./out/tls.crt:/etc/incitape/tls.crt:ro
     depends_on:
       - collector
 

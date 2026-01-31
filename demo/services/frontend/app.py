@@ -1,35 +1,54 @@
 ﻿import os
 import time
 import requests
-from flask import Flask
-from opentelemetry import trace
+from flask import Flask, request
+from opentelemetry import propagate, trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http import Compression as HttpCompression
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter as HttpSpanExporter,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.trace import SpanKind
 
 SERVICE_NAME = os.getenv("SERVICE_NAME", "frontend")
 OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector:4317")
 INSECURE = os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() == "true"
+INCITAPE_ENDPOINT = os.getenv("INCITAPE_OTLP_ENDPOINT", "")
+INCITAPE_TOKEN = os.getenv("INCITAPE_AUTH_TOKEN", "")
+INCITAPE_CA_FILE = os.getenv("INCITAPE_CA_FILE", "")
 
 app = Flask(__name__)
 
 resource = Resource.create({"service.name": SERVICE_NAME})
 provider = TracerProvider(resource=resource)
-exporter = OTLPSpanExporter(endpoint=OTLP_ENDPOINT, insecure=INSECURE)
-provider.add_span_processor(BatchSpanProcessor(exporter))
+collector_exporter = OTLPSpanExporter(endpoint=OTLP_ENDPOINT, insecure=INSECURE)
+provider.add_span_processor(SimpleSpanProcessor(collector_exporter))
+if INCITAPE_ENDPOINT and INCITAPE_TOKEN and INCITAPE_CA_FILE:
+    incitape_headers = {"authorization": f"Bearer {INCITAPE_TOKEN}"}
+    incitape_exporter = HttpSpanExporter(
+        endpoint=INCITAPE_ENDPOINT,
+        certificate_file=INCITAPE_CA_FILE,
+        headers=incitape_headers,
+        compression=HttpCompression.NoCompression,
+    )
+    provider.add_span_processor(SimpleSpanProcessor(incitape_exporter))
 trace.set_tracer_provider(provider)
 
-FlaskInstrumentor().instrument_app(app)
-RequestsInstrumentor().instrument()
+tracer = trace.get_tracer(__name__)
 
 @app.route("/")
 def index():
-    time.sleep(0.01)
-    resp = requests.get("http://checkout:8080/checkout", timeout=2)
-    return f"frontend -> {resp.text}\n"
+    ctx = propagate.extract(request.headers)
+    with tracer.start_as_current_span("frontend.request", context=ctx, kind=SpanKind.SERVER):
+        time.sleep(0.01)
+        with tracer.start_as_current_span("checkout.call", kind=SpanKind.CLIENT):
+            headers = {}
+            propagate.inject(headers)
+            resp = requests.get("http://checkout:8080/checkout", headers=headers, timeout=2)
+        return f"frontend -> {resp.text}\n"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
