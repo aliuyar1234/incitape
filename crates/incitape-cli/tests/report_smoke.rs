@@ -92,6 +92,14 @@ fn write_minimal_tape(tape_dir: &Path) {
     write_checksums(tape_dir, &["manifest.yaml", "tape.tape.zst"]).unwrap();
 }
 
+fn write_ai_config(path: &Path, endpoint: &str) {
+    let contents = format!(
+        "ai:\n  enabled: true\n  endpoint: \"{}\"\n  timeout_secs: 1\n",
+        endpoint
+    );
+    fs::write(path, contents).unwrap();
+}
+
 #[test]
 fn report_writes_report_md() {
     let temp = tempdir().unwrap();
@@ -128,4 +136,83 @@ fn report_refuses_overwrite_without_flag() {
 
     let contents = fs::read_to_string(&report_path).unwrap();
     assert_eq!(contents, "sentinel");
+}
+
+#[test]
+fn report_ai_mock_valid_includes_ai_section() {
+    let temp = tempdir().unwrap();
+    let tape_dir = temp.path().join("tape");
+    write_minimal_tape(&tape_dir);
+
+    let mut analyze = Command::new(assert_cmd::cargo_bin!("incitape"));
+    analyze.arg("analyze").arg(&tape_dir);
+    analyze.assert().success();
+
+    let config_path = temp.path().join("config.yaml");
+    write_ai_config(&config_path, "mock://valid");
+
+    let mut report = Command::new(assert_cmd::cargo_bin!("incitape"));
+    report
+        .arg("--config")
+        .arg(&config_path)
+        .arg("report")
+        .arg(&tape_dir)
+        .arg("--ai");
+    report.assert().success();
+
+    let report_text = fs::read_to_string(tape_dir.join("report.md")).unwrap();
+    assert!(report_text.contains("## AI Summary (Optional)"));
+    assert!(!report_text.contains("AI_STATUS: FALLBACK_USED"));
+}
+
+#[test]
+fn report_ai_mock_invalid_falls_back() {
+    let temp = tempdir().unwrap();
+    let tape_dir = temp.path().join("tape");
+    write_minimal_tape(&tape_dir);
+
+    let mut analyze = Command::new(assert_cmd::cargo_bin!("incitape"));
+    analyze.arg("analyze").arg(&tape_dir);
+    analyze.assert().success();
+
+    let config_path = temp.path().join("config.yaml");
+    write_ai_config(&config_path, "mock://wrong_rootcause");
+
+    let mut report = Command::new(assert_cmd::cargo_bin!("incitape"));
+    report
+        .arg("--config")
+        .arg(&config_path)
+        .arg("report")
+        .arg(&tape_dir)
+        .arg("--ai");
+    report.assert().success();
+
+    let report_text = fs::read_to_string(tape_dir.join("report.md")).unwrap();
+    assert!(report_text.contains("AI_STATUS: FALLBACK_USED"));
+}
+
+#[test]
+fn report_ai_strict_fails_on_invalid_ai() {
+    let temp = tempdir().unwrap();
+    let tape_dir = temp.path().join("tape");
+    write_minimal_tape(&tape_dir);
+
+    let mut analyze = Command::new(assert_cmd::cargo_bin!("incitape"));
+    analyze.arg("analyze").arg(&tape_dir);
+    analyze.assert().success();
+
+    let config_path = temp.path().join("config.yaml");
+    write_ai_config(&config_path, "mock://wrong_rootcause");
+
+    let mut report = Command::new(assert_cmd::cargo_bin!("incitape"));
+    report
+        .arg("--config")
+        .arg(&config_path)
+        .arg("report")
+        .arg(&tape_dir)
+        .arg("--ai")
+        .arg("--ai-strict");
+    report.assert().failure();
+
+    assert!(!tape_dir.join("report.md").exists());
 }

@@ -1,7 +1,8 @@
 use incitape_core::json::determinism_hash_for_json_value;
 use incitape_core::{AppError, AppResult};
 use incitape_redaction::{
-    scan_logs_request, scan_metrics_request, scan_trace_request, LeakageScanner, RedactionRuleset,
+    scan_json_value, scan_logs_request, scan_metrics_request, scan_trace_request, LeakageScanner,
+    RedactionRuleset,
 };
 use incitape_tape::bounds::Bounds;
 use incitape_tape::checksums::verify_checksums;
@@ -9,9 +10,17 @@ use incitape_tape::manifest::Manifest;
 use incitape_tape::reader::TapeReader;
 use incitape_tape::record::RecordType;
 use incitape_tape::tape_id::compute_tape_id;
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
+
+const LEAKAGE_SKIP_KEYS: [&str; 6] = [
+    "tape_id",
+    "determinism_hash",
+    "config_hash",
+    "trace_id",
+    "span_id",
+    "analysis_sha256",
+];
 
 pub fn validate_tape_dir(tape_dir: &Path, strict: bool) -> AppResult<()> {
     ensure_not_partial(tape_dir)?;
@@ -167,7 +176,7 @@ fn validate_analysis(
 
     let leakage = if strict {
         scanner
-            .map(|scanner| scan_json_value(&value, scanner))
+            .map(|scanner| scan_json_value(&value, scanner, &LEAKAGE_SKIP_KEYS))
             .unwrap_or(0)
     } else {
         0
@@ -206,7 +215,7 @@ fn validate_eval(path: &Path, strict: bool, scanner: Option<&LeakageScanner>) ->
 
     let leakage = if strict {
         scanner
-            .map(|scanner| scan_json_value(&value, scanner))
+            .map(|scanner| scan_json_value(&value, scanner, &LEAKAGE_SKIP_KEYS))
             .unwrap_or(0)
     } else {
         0
@@ -237,45 +246,6 @@ fn validate_report(
         0
     };
     Ok(leakage)
-}
-
-fn scan_json_value(value: &serde_json::Value, scanner: &LeakageScanner) -> u64 {
-    let mut skip = HashSet::new();
-    for key in [
-        "tape_id",
-        "determinism_hash",
-        "config_hash",
-        "trace_id",
-        "span_id",
-    ] {
-        skip.insert(key);
-    }
-    scan_json_value_inner(value, scanner, &skip)
-}
-
-fn scan_json_value_inner(
-    value: &serde_json::Value,
-    scanner: &LeakageScanner,
-    skip: &HashSet<&'static str>,
-) -> u64 {
-    match value {
-        serde_json::Value::String(s) => scanner.scan_str(s),
-        serde_json::Value::Array(items) => items
-            .iter()
-            .map(|item| scan_json_value_inner(item, scanner, skip))
-            .sum(),
-        serde_json::Value::Object(map) => map
-            .iter()
-            .map(|(key, value)| {
-                if skip.contains(key.as_str()) {
-                    0
-                } else {
-                    scan_json_value_inner(value, scanner, skip)
-                }
-            })
-            .sum(),
-        _ => 0,
-    }
 }
 
 fn strip_known_ids(input: &str) -> String {

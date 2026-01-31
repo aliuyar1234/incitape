@@ -103,7 +103,7 @@ impl Default for AiConfig {
         Self {
             enabled: false,
             endpoint: None,
-            timeout_secs: 30,
+            timeout_secs: 10,
         }
     }
 }

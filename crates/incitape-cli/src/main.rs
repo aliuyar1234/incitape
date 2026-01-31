@@ -76,6 +76,10 @@ enum Commands {
         #[arg(long)]
         ai: bool,
         #[arg(long)]
+        ai_strict: bool,
+        #[arg(long)]
+        ai_deterministic: bool,
+        #[arg(long)]
         overwrite: bool,
     },
     Eval {
@@ -195,8 +199,19 @@ async fn run(cli: Cli) -> AppResult<()> {
             analysis,
             out,
             ai,
+            ai_strict,
+            ai_deterministic,
             overwrite,
-        } => report::report_command(&tape_dir, analysis, out, ai, overwrite, &config),
+        } => report::report_command(
+            &tape_dir,
+            analysis,
+            out,
+            ai,
+            ai_strict,
+            ai_deterministic,
+            overwrite,
+            &config,
+        ),
         Commands::Eval { command } => match command {
             EvalCommands::Generate {
                 suite,

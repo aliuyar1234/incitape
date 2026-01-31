@@ -33,6 +33,8 @@ IncidentTape captures OTLP telemetry into deterministic tape artifacts and produ
   - `cargo run -p incitape-cli -- report ./tapes/demo --overwrite`
   - Optional AI (requires config):
     - `cargo run -p incitape-cli -- --config ./config.yaml report ./tapes/demo --ai --overwrite`
+    - Deterministic AI (best-effort): add `--ai-deterministic`
+    - Strict AI (fail on AI errors): add `--ai-strict`
 - eval:
   - `cargo run -p incitape-cli -- eval generate --suite eval/suites/synthetic-smoke.yaml --out eval_out/smoke`
   - `cargo run -p incitape-cli -- eval run --suite eval/suites/synthetic-smoke.yaml --out eval_out/eval.json`
