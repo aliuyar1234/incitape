@@ -171,18 +171,45 @@ recorder:
     enabled: false
     token_path: null
 ai:
-  enabled: true
-  endpoint: "http://127.0.0.1:11434"
+  enabled: false
+  endpoint: null
   timeout_secs: 10
 ```
 
 Run with config:
 ```bash
 incitape --config ./config.yaml record --out ./tapes/demo --duration 10
-incitape --config ./config.yaml report ./tapes/demo --ai --overwrite
+incitape --config ./config.yaml report ./tapes/demo --overwrite
 ```
 
 Security note: if you bind the recorder to a non-loopback address, it will refuse to start unless **TLS and bearer auth** are enabled and configured.
+
+## AI report mode (optional)
+
+AI is **report-only**: it never changes `analysis.json` or the ranking; it can only add an extra section to `report.md`.
+
+Requirements:
+- Enable AI in config and set a loopback-only endpoint (local Ollama).
+- Pass `--ai` to `incitape report`.
+
+Example config:
+```yaml
+ai:
+  enabled: true
+  endpoint: "http://127.0.0.1:11434"
+  timeout_secs: 10
+```
+
+Run report with AI:
+```bash
+incitape --config ./config.yaml report ./tapes/demo --ai --overwrite
+```
+
+Safety behavior:
+- Endpoint must be loopback-only (`http://127.0.0.1` or `http://[::1]`), otherwise `report` fails with a security refusal (exit code 4).
+- AI output is schema-validated; if it fails validation, `incitape` falls back to the deterministic report.
+- Use `--ai-strict` to treat any AI failure as an error (useful in CI).
+- Use `--ai-deterministic` for best-effort deterministic provider settings (temperature=0, etc.).
 
 ## Determinism + safety (non-negotiable)
 
