@@ -24,6 +24,46 @@ IncidentTape makes incidents:
 - **Minimize** (`incitape minimize`): create a smaller/safer derived tape that preserves RCA behavior.
 - **Eval** (`incitape eval generate/run`): deterministic suites + regression gates (including leakage=0).
 
+## Architecture (overview)
+
+Detailed diagrams and crate map: [`docs/architecture.md`](docs/architecture.md).
+
+```mermaid
+flowchart LR
+  CLI["incitape CLI"]
+  REC["record"]
+  REP["replay"]
+  ANA["analyze"]
+  RPT["report"]
+  VAL["validate"]
+  MIN["minimize"]
+  EVAL["eval"]
+  TAPE[(tape_dir/)]
+
+  CLI --> REC
+  CLI --> REP
+  CLI --> ANA
+  CLI --> RPT
+  CLI --> VAL
+  CLI --> MIN
+  CLI --> EVAL
+
+  REC --> TAPE
+  TAPE --> REP
+  TAPE --> ANA
+  ANA --> RPT
+  TAPE --> RPT
+  TAPE --> VAL
+  TAPE --> MIN
+  MIN --> TAPE
+  TAPE --> EVAL
+  EVAL --> TAPE
+```
+
+Notes:
+- Networked commands: `record`, `replay`.
+- Offline-first commands: `analyze`, `validate`, `minimize`, `eval`, `report` (AI is optional and local-only).
+
 ## Tape artifact (`tape_dir/`)
 
 A finalized tape directory contains:
@@ -194,43 +234,6 @@ Safety behavior:
 | 3 | validation error (corrupt/invalid inputs) |
 | 4 | security refusal (unsafe config / forbidden operation) |
 | 5 | internal error (bug) |
-
-## Architecture (overview)
-
-```mermaid
-flowchart LR
-  CLI["incitape CLI"]
-  REC["record"]
-  REP["replay"]
-  ANA["analyze"]
-  RPT["report"]
-  VAL["validate"]
-  MIN["minimize"]
-  EVAL["eval"]
-  TAPE[(tape_dir/)]
-
-  CLI --> REC
-  CLI --> REP
-  CLI --> ANA
-  CLI --> RPT
-  CLI --> VAL
-  CLI --> MIN
-  CLI --> EVAL
-
-  REC --> TAPE
-  TAPE --> REP
-  TAPE --> ANA
-  TAPE --> VAL
-  TAPE --> MIN
-  ANA --> RPT
-  TAPE --> EVAL
-```
-
-Notes:
-- Networked commands: `record`, `replay`.
-- Offline-first commands: `analyze`, `validate`, `minimize`, `eval`, `report` (AI is optional and local-only).
-
-For detailed diagrams (dependency layers + per-command pipelines) and the crate map, see `docs/architecture.md`.
 
 ## Demo
 
