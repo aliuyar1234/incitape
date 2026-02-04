@@ -1,5 +1,10 @@
 # IncidentTape (`incitape`)
 
+[![CI](https://github.com/aliuyar1234/incitape/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/aliuyar1234/incitape/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/aliuyar1234/incitape?sort=semver)](https://github.com/aliuyar1234/incitape/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.91.1-blue?logo=rust)](rust-toolchain.toml)
+
 Reproducible incidents as replayable telemetry tapes.
 
 `incitape` is a CLI that records OpenTelemetry telemetry (OTLP) into a deterministic on-disk artifact, then lets you replay, analyze, report, minimize, validate, and evaluate it. The design goals are **offline-first**, **fail-closed**, and **CI-friendly determinism**.
@@ -250,4 +255,4 @@ See:
 
 ## License
 
-Apache-2.0 (see workspace `Cargo.toml`).
+Apache-2.0 (see `LICENSE`).
