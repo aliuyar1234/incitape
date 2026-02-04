@@ -204,12 +204,14 @@ async fn run(cli: Cli) -> AppResult<()> {
             overwrite,
         } => report::report_command(
             &tape_dir,
-            analysis,
-            out,
-            ai,
-            ai_strict,
-            ai_deterministic,
-            overwrite,
+            report::ReportCommandArgs {
+                analysis,
+                out,
+                ai,
+                ai_strict,
+                ai_deterministic,
+                overwrite,
+            },
             &config,
         ),
         Commands::Eval { command } => match command {

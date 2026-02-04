@@ -11,16 +11,28 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+pub struct ReportCommandArgs {
+    pub analysis: Option<PathBuf>,
+    pub out: Option<PathBuf>,
+    pub ai: bool,
+    pub ai_strict: bool,
+    pub ai_deterministic: bool,
+    pub overwrite: bool,
+}
+
 pub fn report_command(
     tape_dir: &Path,
-    analysis: Option<PathBuf>,
-    out: Option<PathBuf>,
-    ai: bool,
-    ai_strict: bool,
-    ai_deterministic: bool,
-    overwrite: bool,
+    args: ReportCommandArgs,
     config: &incitape_core::config::Config,
 ) -> AppResult<()> {
+    let ReportCommandArgs {
+        analysis,
+        out,
+        ai,
+        ai_strict,
+        ai_deterministic,
+        overwrite,
+    } = args;
     ensure_not_partial(tape_dir)?;
     if !tape_dir.is_dir() {
         return Err(AppError::validation("tape_dir is not a directory"));

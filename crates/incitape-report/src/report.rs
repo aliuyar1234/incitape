@@ -490,7 +490,7 @@ pub fn analysis_sha256_hex(bytes: &[u8]) -> String {
 }
 
 pub fn ensure_report_size(report: &str) -> AppResult<()> {
-    if report.as_bytes().len() > MAX_REPORT_MD_BYTES {
+    if report.len() > MAX_REPORT_MD_BYTES {
         return Err(AppError::validation("report exceeds max bytes"));
     }
     Ok(())
@@ -593,7 +593,7 @@ fn enforce_ai_constraints(report: &AiReport, evidence_pack: &EvidencePack) -> Ap
     }
 
     ensure_ids_exist(
-        &[report.root_cause.primary_suspect_id.clone()],
+        std::slice::from_ref(&report.root_cause.primary_suspect_id),
         &suspect_ids,
         "root_cause.primary_suspect_id",
     )?;
@@ -604,7 +604,7 @@ fn enforce_ai_constraints(report: &AiReport, evidence_pack: &EvidencePack) -> Ap
             ));
         }
         ensure_ids_exist(
-            &[alt.suspect_id.clone()],
+            std::slice::from_ref(&alt.suspect_id),
             &suspect_ids,
             "root_cause.alternatives",
         )?;
@@ -992,7 +992,7 @@ fn sanitize_text(redactor: &RedactionEngine, value: &str, max_len: usize) -> Str
     let mut out = strip_code_blocks(&redacted);
     out = strip_urls(&out);
     out = out.replace('`', "");
-    out = out.replace('<', "").replace('>', "");
+    out = out.replace(['<', '>'], "");
     out = normalize_whitespace(&out);
     if out.chars().count() > max_len {
         out = out.chars().take(max_len).collect();
@@ -1004,7 +1004,7 @@ fn render_safe_text(value: &str, max_len: usize) -> String {
     let mut out = strip_code_blocks(value);
     out = strip_urls(&out);
     out = out.replace('`', "");
-    out = out.replace('<', "").replace('>', "");
+    out = out.replace(['<', '>'], "");
     out = normalize_whitespace(&out);
     if out.chars().count() > max_len {
         out = out.chars().take(max_len).collect();
